@@ -1,4 +1,7 @@
-from Sampling_GUI import Ui_MainWindow
+from cProfile import label
+
+from matplotlib.pyplot import xlabel
+from gui import Ui_MainWindow
 import os
 import numpy as np
 import math
@@ -13,11 +16,13 @@ class IllustratorGUI(Ui_MainWindow):
         if self.menuHide.title() == "hide":
             self.secondaryGraph.setVisible(False)
             self.secondryGraph_label.setVisible(False)
+            self.secondryGraph_info.setVisible(False)
             self.menuHide.setTitle("show")
 
         else:
             self.secondaryGraph.setVisible(True)
             self.secondryGraph_label.setVisible(True)
+            self.secondryGraph_info.setVisible(True)
             self.menuHide.setTitle("hide")
 
     def setupUi(self, MainWindow):
@@ -26,9 +31,8 @@ class IllustratorGUI(Ui_MainWindow):
 
 
 class IllustratorApplication(QtWidgets.QMainWindow):
-    exported_signal_index = "untitled"
+    exported_signal_index = "resultant_signal_from_composer"
     interpolate_f = 0
-
     def __init__(self):
         super(IllustratorApplication, self).__init__()
         self.gui = IllustratorGUI()
@@ -36,97 +40,23 @@ class IllustratorApplication(QtWidgets.QMainWindow):
         self.sinusoidal = None
         self.Signal_test = None
         self.Dotted_plot = None
+        self.index1=0
+        self.index2=0
+
         self.set_widget_function()
 
     def set_widget_function(self):
         # Buttons
-        self.gui.add_sin_Button.clicked.connect(self.add_sig_to_resultantGraph)
+        self.gui.actionSignals.triggered.connect(self.open_sig_file)
         self.gui.show_sin_Button.clicked.connect(self.plot_sig_on_composerGraph)
+        self.gui.add_sin_Button.clicked.connect(self.add_sig_to_resultantGraph)
+        self.gui.sinusoidal_list_comboBox.activated.connect(self.plot_sigComponent)
         self.gui.delete_sin_Button.clicked.connect(self.delete_sigComponent_from_resultantGraph)
         self.gui.confirm_sig_Button.clicked.connect(self.plot_resultant_sig_on_mainGraph)
         # slider:
         self.gui.samplingFreq_Slider.valueChanged.connect(
             lambda: self.Renew_Intr(self.gui.samplingFreq_Slider.value()))
-
-        self.gui.sinusoidal_list_comboBox.activated.connect(self.plot_sigComponent)
-
-        self.gui.actionSignals.triggered.connect(self.open_sig_file)
         self.gui.actionSecondary_Graph_hide.triggered.connect(self.gui.show_secondary_graph)
-
-    def plot_sig_on_composerGraph(self):
-        self.gui.composerGraph.clear()
-        name = self.gui.name_lineEdit.text()
-        freq = self.gui.frequency_lineEdit.text()
-        amp = self.gui.amplitude_lineEdit.text()
-        phase = self.gui.phase_lineEdit.text()
-        if name in storage.componentSin.keys():
-            name += name
-        elif name == "":
-            name = "standard name"
-        freq = IllustratorApplication.return_zero_at_emptyString(freq)
-        amp = IllustratorApplication.return_zero_at_emptyString(amp)
-        phase = IllustratorApplication.return_zero_at_emptyString(phase)
-        self.sinusoidal = Sinusoidals(name, float(freq), float(amp), float(phase))
-        self.gui.composerGraph.plot(self.sinusoidal.time, self.sinusoidal.y_axis_value, pen='r', name=name)
-
-    def Renew_Intr(self, Freq):
-        try:
-            self.Signal_test.get_Interpolation(Freq)
-            self.gui.freq_label.setText(str(Freq))
-            self.gui.mainGraph.removeItem(self.Dotted_plot)
-            self.Dotted_plot = self.gui.mainGraph.plot(self.Signal_test.Time_Intrv, self.Signal_test.Samples, pen="k",
-                                                       symbol='+')
-            self.gui.secondaryGraph.clear()
-            self.gui.secondaryGraph.plot(self.Signal_test.TimeAxis, IllustratorApplication.interpolate_f, pen="b")
-        except:
-            pass
-
-    def add_sig_to_resultantGraph(self):
-        # add try except statement
-        if self.sinusoidal != None:
-            self.gui.sinusoidal_list_comboBox.addItem(self.sinusoidal.name)
-            self.gui.resultant_signalGraph.clear()
-            storage.componentSin[self.sinusoidal.name] = self.sinusoidal
-            self.sinusoidal.add_sig_to_result()
-            self.gui.resultant_signalGraph.plot(Sinusoidals.resultant_sig[0], Sinusoidals.resultant_sig[1], pen='r',
-                                                name="Total Sum for All Components")
-            self.sinusoidal = None
-
-    def plot_resultant_sig_on_mainGraph(self):
-        self.plotOnMain(Sinusoidals.resultant_sig[0], Sinusoidals.resultant_sig[1],
-                        "Resultant Signal from Composer")
-        IllustratorApplication.export_resultant_as_csv(IllustratorApplication.exported_signal_index)
-        # storage.opened_signal["signal_data"] = Sinusoidals.resultant_sig[1]
-        Sinusoidals.resultant_sig = [np.linspace(0, 2, 500, endpoint=False), [0] * 500]
-        self.gui.composerGraph.clear()
-        self.gui.resultant_signalGraph.clear()
-        self.gui.sinusoidal_list_comboBox.clear()
-        storage.componentSin = {}
-
-    def plot_sigComponent(self):
-        self.gui.composerGraph.clear()
-        signal_component = storage.componentSin[self.gui.sinusoidal_list_comboBox.currentText()]
-        self.gui.composerGraph.plot(signal_component.time, signal_component.y_axis_value, pen='r',
-                                    name=self.gui.sinusoidal_list_comboBox.currentText())
-
-    def delete_sigComponent_from_resultantGraph(self):
-        signal_name = self.gui.sinusoidal_list_comboBox.currentText()
-        if signal_name != "":
-            self.gui.sinusoidal_list_comboBox.removeItem(self.gui.sinusoidal_list_comboBox.currentIndex())
-            signal = storage.componentSin[signal_name]
-            signal.subtract_sig_from_result()
-            del storage.componentSin[signal_name]
-            self.gui.composerGraph.clear()
-            self.gui.resultant_signalGraph.clear()
-            if len(storage.componentSin) != 0:
-                self.gui.resultant_signalGraph.plot(Sinusoidals.resultant_sig[0], Sinusoidals.resultant_sig[1], pen='r',
-                                                    name="Total Sum for All Components")
-
-    @classmethod
-    def export_resultant_as_csv(cls, file_name="signal_data"):
-        df = pd.DataFrame(Sinusoidals.resultant_sig).transpose()
-        df.columns = ['Time', 'Amplitude']
-        df.to_csv(file_name + '.csv', index=False)
 
     def open_sig_file(self):
         try:
@@ -141,17 +71,114 @@ class IllustratorApplication(QtWidgets.QMainWindow):
         except:
             pass
 
+    def plot_sig_on_composerGraph(self):
+        if self.gui.show_sin_Button.text()=="Show":
+            self.gui.composerGraph.clear()
+            name = self.gui.name_lineEdit.text()
+            freq = self.gui.frequency_lineEdit.text()
+            amp = self.gui.amplitude_lineEdit.text()
+            phase = self.gui.phase_lineEdit.text()
+            if name in storage.componentSin.keys():
+                name+=str(self.index1)
+                self.index1+=1
+            elif name == "":
+                name = "standard name"+str(self.index2)
+                self.index2+=1
+
+            freq = IllustratorApplication.return_zero_at_emptyString(freq)
+            amp = IllustratorApplication.return_zero_at_emptyString(amp)
+            phase = IllustratorApplication.return_zero_at_emptyString(phase)
+            self.sinusoidal = Sinusoidals(name, float(freq), float(amp), float(phase))
+            self.gui.composerGraph.plot(self.sinusoidal.time, self.sinusoidal.y_axis_value, pen='r')
+
+            self.gui.show_sin_Button.setText("Delete")
+        else:    
+            self.gui.composerGraph.clear()
+            self.clear_lineedit()
+            self.gui.show_sin_Button.setText("Show")
+            self.sinusoidal=None
+
+
+    def clear_lineedit(self):
+        self.gui.name_lineEdit.clear()
+        self.gui.frequency_lineEdit.clear()
+        self.gui.amplitude_lineEdit.clear()
+        self.gui.phase_lineEdit.clear()
+    
+    def add_sig_to_resultantGraph(self):
+        # add try except statement
+        if self.sinusoidal != None:
+            self.gui.sinusoidal_list_comboBox.addItem(self.sinusoidal.name)
+            self.gui.resultant_signalGraph.clear()
+            storage.componentSin[self.sinusoidal.name] = self.sinusoidal
+            self.sinusoidal.add_sig_to_result()
+            self.gui.resultant_signalGraph.plot(Sinusoidals.resultant_sig[0], Sinusoidals.resultant_sig[1], pen='r',
+                                        )
+            self.sinusoidal = None
+            self.gui.composerGraph.clear()
+            self.gui.show_sin_Button.setText("Show")
+            self.clear_lineedit()
+
+ 
+    def plot_sigComponent(self):
+        self.gui.composerGraph.clear()
+        signal_component = storage.componentSin[self.gui.sinusoidal_list_comboBox.currentText()]
+        self.gui.composerGraph.plot(signal_component.time, signal_component.y_axis_value, pen='r',
+                                   )
+
+    def delete_sigComponent_from_resultantGraph(self):
+        signal_name = self.gui.sinusoidal_list_comboBox.currentText()
+        if signal_name != "":
+            self.gui.sinusoidal_list_comboBox.removeItem(self.gui.sinusoidal_list_comboBox.currentIndex())
+            signal = storage.componentSin[signal_name]
+            signal.subtract_sig_from_result()
+            del storage.componentSin[signal_name]
+            self.gui.resultant_signalGraph.clear()
+            self.gui.composerGraph.clear()
+
+            if len(storage.componentSin) != 0:
+                self.gui.resultant_signalGraph.plot(Sinusoidals.resultant_sig[0],Sinusoidals.resultant_sig[1],pen='r'
+                                                    )
+
+    def plot_resultant_sig_on_mainGraph(self):
+        self.plotOnMain(Sinusoidals.resultant_sig[0], Sinusoidals.resultant_sig[1],
+                        "Resultant Signal from Composer")
+        IllustratorApplication.export_resultant_as_csv(IllustratorApplication.exported_signal_index)
+        # storage.opened_signal["signal_data"] = Sinusoidals.resultant_sig[1]
+        Sinusoidals.resultant_sig = [np.linspace(0, 2, 500, endpoint=False), [0] * 500]
+        self.gui.resultant_signalGraph.clear()
+        self.gui.sinusoidal_list_comboBox.clear()
+        storage.componentSin = {}                              
+ 
+    def Renew_Intr(self, Freq):
+        try:
+            self.Signal_test.get_Interpolation(Freq)
+            self.gui.freq_label.setText(str(Freq))
+            self.gui.mainGraph.removeItem(self.Dotted_plot)
+            self.Dotted_plot = self.gui.mainGraph.plot(self.Signal_test.Time_Intrv, self.Signal_test.Samples, pen="k",
+                                                       symbol='+')
+            self.gui.secondaryGraph.clear()
+            self.gui.secondaryGraph.plot(self.Signal_test.TimeAxis, IllustratorApplication.interpolate_f, pen="b")
+            self.gui.secondryGraph_info.setText("[Sampling frq. :"+str(Freq)+"]")
+        except:
+            pass
+
+    @classmethod
+    def export_resultant_as_csv(cls, file_name="signal_data"):
+        df = pd.DataFrame(Sinusoidals.resultant_sig).transpose()
+        df.columns = ['Time', 'Amplitude']
+        df.to_csv(file_name + '.csv', index=False)
+
+
     def plotOnMain(self, Time, Amplitude, Name):
+        
         self.Signal_test = Test_Signal(Time, Amplitude)
         self.gui.mainGraph.clear()
         self.gui.secondaryGraph.clear()
-        self.gui.show_secondary_graph(True)
+
         self.gui.samplingFreq_Slider.setMaximum(3 * self.Signal_test.Max_Freq)
         self.gui.mainGraph.plot(Time, Amplitude, pen="r")
-
-        self.Dotted_plot = self.gui.mainGraph.plot(self.Signal_test.Time_Intrv, self.Signal_test.Samples, pen="k",
-                                                   symbol="+")
-        self.gui.secondaryGraph.plot(np.array(self.Signal_test.TimeAxis), IllustratorApplication.interpolate_f, pen="b")
+        self.gui.mainGraph_info.setText("["+Name+" /Max.frq. : "+str(self.Signal_test.Max_Freq)+"Hz]")
         self.gui.mainGraph.setXRange(0, max(self.Signal_test.TimeAxis), padding=0)
 
         self.gui.secondaryGraph.setXRange(0, max(self.Signal_test.TimeAxis), padding=0)
