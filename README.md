@@ -1,11 +1,11 @@
 # Sampling & Reconstruction studio for signals
 - [Description](#Description)
 - [Sampling Theory Illustrator](#Sampling_Theory_Illustrator)
-    - [Features](#features)
+    - [Features](#Features)
     - [Demos](#Demos)
         
 - [Signal Composer](#Signal_Composer)
-    - [Features](#features)
+    - [Pros](#Pros)
     - [Demos](#Demos)
         - [Image segmentation](#Image_segmentation)
 
@@ -30,7 +30,7 @@ frequency in the read signal.
 ![Composer](docs/illustartor.gif)
 ------
 ## Signal_Composer
-### Features
+### Pros
 - The application provides the user with a primitive signal composer where s/he can generate basic signals which is sum of sinusoidals to test and validate on the app.
 - The user can generate these sinusoidals and each sinusoidal has a specific frequency, magnitude and phase shift
 - The Composer has the following functionalities:
